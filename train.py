@@ -7,6 +7,7 @@ from plot import showPlot
 from evaluation import evaluate, evaluateRandomly, evaluateAll
 from tensorHelpers import tensorsFromPair, tensorFromSentence
 
+from logger import logger
 from device import device
 
 SOS_token = 0
@@ -36,10 +37,10 @@ def trainIters(lang, modelData, encoder, decoder, args):
         plot_loss_total += loss
 
         if iter % args.eval_ev == 0:
-            acc = evaluateAll(modelData.test, lang, encoder, decoder, args, n=100)
+            acc = evaluateAll(modelData, lang, encoder, decoder, args, n=None if (iter % (args.eval_ev*10)) == 0 else 100, computeMafDist=True)
             print_loss_avg = print_loss_total / args.eval_ev
             print_loss_total = 0
-            print('%s (%d %d%%) LOSS %.4f ACC %.4f'  % (timeSince(start, iter / args.it), iter, (iter / args.it * 100), print_loss_avg, acc))
+            logger.info('%s (%d %d%%) LOSS %.4f ACC %.4f'  % (timeSince(start, iter / args.it), iter, (iter / args.it * 100), print_loss_avg, acc))
             if args.verbose > 1:
                 evaluateRandomly(modelData.test, lang, encoder, decoder, args, n=1)
             
@@ -48,8 +49,8 @@ def trainIters(lang, modelData, encoder, decoder, args):
         #     plot_losses.append(plot_loss_avg)
         #     plot_loss_total = 0
 
-    acc_total = evaluateAll(modelData.test, lang, encoder, decoder, args)
-    print("Acurácia final: ", acc_total)
+    acc_total = evaluateAll(modelData.test, lang, encoder, decoder, args, computeMafDist=True)
+    logger.info(f"Acurácia final: {acc_total}")
 
     # showPlot(plot_losses)  
   
@@ -72,17 +73,27 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
 
     decoder_input = torch.tensor([[SOS_token]], device=device)
     decoder_hidden = encoder_hidden
-   
-    # Without teacher forcing: use its own predictions as the next input
-    for di in range(target_length):
-        decoder_output, decoder_hidden, decoder_attention = decoder(
-            decoder_input, decoder_hidden, encoder_outputs)
-        topv, topi = decoder_output.topk(1)
-        decoder_input = topi.squeeze().detach()  # detach from history as input
+    
+    use_teacher_forcing = True if random.random() < 0.2 else False
 
-        loss += criterion(decoder_output, target_tensor[di])
-        if decoder_input.item() == EOS_token:
-            break
+    if use_teacher_forcing:
+        # Teacher forcing: Feed the target as the next input
+        for di in range(target_length):
+            decoder_output, decoder_hidden, decoder_attention = decoder(
+                decoder_input, decoder_hidden, encoder_outputs)
+            loss += criterion(decoder_output, target_tensor[di])
+            decoder_input = target_tensor[di]  # Teacher forcing
+    else:
+        # Without teacher forcing: use its own predictions as the next input
+        for di in range(target_length):
+            decoder_output, decoder_hidden, decoder_attention = decoder(
+                decoder_input, decoder_hidden, encoder_outputs)
+            topv, topi = decoder_output.topk(1)
+            decoder_input = topi.squeeze().detach()  # detach from history as input
+
+            loss += criterion(decoder_output, target_tensor[di])
+            if decoder_input.item() == EOS_token:
+                break
 
     loss.backward()
 

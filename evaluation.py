@@ -2,8 +2,9 @@ import torch
 import random
 import numpy as np
 
-from tensorHelpers import tensorsFromPair, tensorFromSentence
+from tensorHelpers import tensorFromSentence
 from device import device
+from logger import logger
 
 SOS_token = 0
 EOS_token = 1
@@ -13,16 +14,21 @@ def evaluateRandomly(pairs, lang, encoder, decoder, args, n=0):
         pair = random.choice(pairs)
         output_words, attentions = evaluate(lang, encoder, decoder, pair[0], args)
         output_sentence = ' '.join(output_words)
-        print('=', pair[1])
-        print('<', output_sentence)
-        print('')
+        logger.info(f'= {len(pair[1])} {pair[1]}')
+        logger.info(f'< {len(output_sentence)} {output_sentence}')
+        logger.info('')
         
-def evaluateAll(pairs, lang, encoder, decoder, args, n=None):
+def evaluateAll(modelData, lang, encoder, decoder, args, n=None, computeMafDist=False):
     acertos = 0
     tentativas = 0
     if n:
-        pairs = random.sample(pairs, n)
-        
+        pairs = random.sample(modelData.test, n)
+    else:
+        pairs = modelData.test
+    
+    markerMutations = np.zeros(len(modelData.mafArr))
+    markerMutationPred = np.zeros(len(modelData.mafArr))
+    
     for idx, pair in enumerate(pairs):
         real = np.array(list(pair[1].replace(" ", "")), dtype=int)
         output_words, attentions = evaluate(lang, encoder, decoder, pair[0], args)
@@ -33,6 +39,33 @@ def evaluateAll(pairs, lang, encoder, decoder, args, n=None):
             
         tentativas += len(real)
         acertos += np.sum(real == prediction[:len(real)])
+        if computeMafDist:
+            for idx in range(len(real)):
+                if real[idx] == 1:
+                    markerMutations[idx] += 1 
+                    if prediction[idx] == 1:
+                        markerMutationPred[idx] += 1
+    if computeMafDist:     
+        common = [1,1]
+        uncommon = [1,1]
+        rare = [1,1]
+        unheard = [1, 1]
+        for idx, maf in enumerate(modelData.mafArr):
+            if maf > 0.05:
+                common[0] += markerMutations[idx]
+                common[1] += markerMutationPred[idx]
+            elif maf > 0.005:
+                uncommon[0] += markerMutations[idx]
+                uncommon[1] += markerMutationPred[idx]
+            elif maf > 0.000001:
+                rare[0] += markerMutations[idx]
+                rare[1] += markerMutationPred[idx]
+            else:
+                unheard[0] += markerMutations[idx]
+                unheard[1] += markerMutationPred[idx]
+        
+        logger.info(f"Common ({common[0]} {100*common[1]/common[0]}%); uncommon ({uncommon[0]} {100*uncommon[1]/uncommon[0]}%); rare  ({rare[0]} {100*rare[1]/rare[0]}%); unheard ({100*unheard[0]} {unheard[1]/unheard[0]}%);")
+        
     return acertos/tentativas
         
 def evaluate(lang, encoder, decoder, sentence, args):
