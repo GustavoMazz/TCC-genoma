@@ -64,7 +64,7 @@ def evaluateAll(modelData, lang, encoder, decoder, args, n=None, computeMafDist=
                 unheard[0] += markerMutations[idx]
                 unheard[1] += markerMutationPred[idx]
         
-        logger.info(f"Common ({common[0]} {100*common[1]/common[0]}%); uncommon ({uncommon[0]} {100*uncommon[1]/uncommon[0]}%); rare  ({rare[0]} {100*rare[1]/rare[0]}%); unheard ({100*unheard[0]} {unheard[1]/unheard[0]}%);")
+        logger.info(f"Common ({common[0]} {100*common[1]/common[0]}%); uncommon ({uncommon[0]} {100*uncommon[1]/uncommon[0]}%); rare  ({rare[0]} {100*rare[1]/rare[0]}%); unheard ({unheard[0]} {100*unheard[1]/unheard[0]}%);")
         
     return acertos/tentativas
         

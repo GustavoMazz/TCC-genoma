@@ -37,7 +37,7 @@ def trainIters(lang, modelData, encoder, decoder, args):
         plot_loss_total += loss
 
         if iter % args.eval_ev == 0:
-            acc = evaluateAll(modelData, lang, encoder, decoder, args, n=None if (iter % (args.eval_ev*10)) == 0 else 100, computeMafDist=True)
+            acc = evaluateAll(modelData, lang, encoder, decoder, args, n=100, computeMafDist=True)
             print_loss_avg = print_loss_total / args.eval_ev
             print_loss_total = 0
             logger.info('%s (%d %d%%) LOSS %.4f ACC %.4f'  % (timeSince(start, iter / args.it), iter, (iter / args.it * 100), print_loss_avg, acc))
