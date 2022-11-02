@@ -1,2 +1,12 @@
-run:
-    python3.8 impute.py -input result_aux_huge.txt -verbose 2 -hidden_size 512 -rel_mask 0.5 -length 300 -max_length 50
+rodar:
+	python3 impute.py \
+        -input output.txt \
+        -verbose 2 \
+        -hidden_size 512 \
+        -rel_mask 0.4 \
+        -length 300 \
+        -offset $(offset) \
+        -max_length 50 \
+        -it 70000 \
+        -eval_ev 100 \
+        -verbose 2

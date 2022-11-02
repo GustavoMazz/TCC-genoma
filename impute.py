@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import random
 import math
+import time
 import string
 import sys
 import matplotlib.pyplot as plt
@@ -52,7 +53,7 @@ class ModelData:
         logger.info(args)
         self.args = args
         self.get_samples(args.input)
-        self.length = args.length if args.length < len(self.samples[0]) else len(self.samples[0])
+        self.length = args.length
         self.get_mask()
         self.mask_pop()
         self.make_inputs_outputs()
@@ -61,8 +62,7 @@ class ModelData:
         self.train, self.test = train_test_split(self.pairs, test_size=args.rel_test)
     
     def get_samples(self, filename):
-        sampleData = self.read(filename)
-        self.samples = sampleData.split('\n')
+        self.samples = self.read(filename)
         
     def get_mask(self):
         random_positions = random.sample(range(0, self.length), math.ceil(self.length*args.rel_mask))
@@ -73,8 +73,8 @@ class ModelData:
         maskedSamples = []
         hiddenMarkers = []
         for sample in self.samples:
-            maskedSamples.append(['5' if self.mask[index] else marker for index, marker in enumerate(sample[:self.length])])
-            hiddenMarkers.append([marker for index, marker in enumerate(sample[:self.length]) if self.mask[index]])
+            maskedSamples.append(['5' if self.mask[index] else marker for index, marker in enumerate(sample)])
+            hiddenMarkers.append([marker for index, marker in enumerate(sample) if self.mask[index]])
         self.maskedSamples = maskedSamples
         self.hiddenMarkers = hiddenMarkers
         return maskedSamples, hiddenMarkers
@@ -105,8 +105,11 @@ class ModelData:
         return self.mafArr
     
     def read(self, filename):
+        data = []
         with open(filename, 'r') as f:
-            return f.read()
+            for line in f:
+                data.append(line[self.args.offset : self.args.offset+self.args.length])
+        return data
 
 def main(args):
     data = ModelData(args)
@@ -122,8 +125,8 @@ def main(args):
     if args.verbose > 0:
         logger.info("População ###")
         logger.info(f" - Número de samples: {len(data.samples)}" )
-        logger.info(f" - > 1ª sample: {data.train[0][0]}")
-        logger.info(f" - < 1ª sample: {data.train[0][1]}")
+        logger.info(f" - > 1ª sample: ({len(data.train[0][0])}) {data.train[0][0]}")
+        logger.info(f" - < 1ª sample: ({len(data.train[0][1])}) {data.train[0][1]}")
         
         logger.info("\nMáscara ###")
         logger.info(f" - Marcadores mascarados {len(data.mask)}")
@@ -146,7 +149,8 @@ if __name__ == '__main__':
     my_parser.add_argument('-rel_test', help='Relative number of test samples from dataset', default=0.2, type=float)
     my_parser.add_argument('-max_length', help='Max length of input/output', default=100, type=int)
     my_parser.add_argument('-length', help='Length of the dataset', default=1000, type=int)
-    my_parser.add_argument('-dropout', help='Dropout', default=0.1, type=float)
+    my_parser.add_argument('-offset', help='Offset from original dataset position, count length', default=0, type=int)
+    my_parser.add_argument('-dropout', help='Dropout', default=0.01, type=float)
     my_parser.add_argument('-ilang_size', help='input language size', default=10, type=int)
     my_parser.add_argument('-olang_size', help='output language size', default=5, type=int)
     args = my_parser.parse_args()

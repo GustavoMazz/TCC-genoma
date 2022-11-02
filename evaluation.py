@@ -46,10 +46,10 @@ def evaluateAll(modelData, lang, encoder, decoder, args, n=None, computeMafDist=
                     if prediction[idx] == 1:
                         markerMutationPred[idx] += 1
     if computeMafDist:     
-        common = [1,1]
-        uncommon = [1,1]
-        rare = [1,1]
-        unheard = [1, 1]
+        common = [0,0,0]
+        uncommon = [0,0,0]
+        rare = [0,0,0]
+        unheard = [0,0,0]
         for idx, maf in enumerate(modelData.mafArr):
             if maf > 0.05:
                 common[0] += markerMutations[idx]
@@ -63,10 +63,18 @@ def evaluateAll(modelData, lang, encoder, decoder, args, n=None, computeMafDist=
             else:
                 unheard[0] += markerMutations[idx]
                 unheard[1] += markerMutationPred[idx]
+        common[2] = 100*common[1]/common[0] if common[0] > 0 else 0
+        uncommon[2] = 100*uncommon[1]/uncommon[0] if uncommon[0] > 0 else 0
+        rare[2] = 100*rare[1]/rare[0] if rare[0] > 0 else 0
         
-        logger.info(f"Common ({common[0]} {100*common[1]/common[0]}%); uncommon ({uncommon[0]} {100*uncommon[1]/uncommon[0]}%); rare  ({rare[0]} {100*rare[1]/rare[0]}%); unheard ({unheard[0]} {100*unheard[1]/unheard[0]}%);")
-        
-    return acertos/tentativas
+    logger.info(f"Common ({common[0]} {common[2]}%); uncommon ({uncommon[0]} {uncommon[2]}%); rare  ({rare[0]} {rare[2]}%);")
+    
+    return [
+        acertos/tentativas, # Acurácia gerla
+        common[0], common[1], common[2],
+        uncommon[0], uncommon[1], uncommon[2],
+        rare[0], rare[1], rare[2]
+    ]
         
 def evaluate(lang, encoder, decoder, sentence, args):
     with torch.no_grad():

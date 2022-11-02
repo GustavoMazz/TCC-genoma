@@ -1,6 +1,7 @@
 import torch
 import random
 import time
+import pandas as pd
 
 from helpers import timeSince
 from plot import showPlot
@@ -25,6 +26,7 @@ def trainIters(lang, modelData, encoder, decoder, args):
     training_pairs = [tensorsFromPair(lang, random.choice(modelData.train)) for i in range(args.it)]
     criterion = torch.nn.NLLLoss()
 
+    accuracies = []
     for iter in range(1, args.it + 1):
         training_pair = training_pairs[iter - 1]
         input_tensor = training_pair[0]
@@ -38,21 +40,19 @@ def trainIters(lang, modelData, encoder, decoder, args):
 
         if iter % args.eval_ev == 0:
             acc = evaluateAll(modelData, lang, encoder, decoder, args, n=100, computeMafDist=True)
+            accuracies.append(acc)
+            
             print_loss_avg = print_loss_total / args.eval_ev
             print_loss_total = 0
-            logger.info('%s (%d %d%%) LOSS %.4f ACC %.4f'  % (timeSince(start, iter / args.it), iter, (iter / args.it * 100), print_loss_avg, acc))
+            logger.info('%s (%d %d%%) LOSS %.4f ACC %.4f'  % (timeSince(start, iter / args.it), iter, (iter / args.it * 100), print_loss_avg, acc[0]))
             if args.verbose > 1:
                 evaluateRandomly(modelData.test, lang, encoder, decoder, args, n=1)
-            
-        # if iter % plot_every == 0:
-        #     plot_loss_avg = plot_loss_total / plot_every
-        #     plot_losses.append(plot_loss_avg)
-        #     plot_loss_total = 0
-
-    acc_total = evaluateAll(modelData.test, lang, encoder, decoder, args, computeMafDist=True)
-    logger.info(f"Acurácia final: {acc_total}")
-
-    # showPlot(plot_losses)  
+    
+      
+    acc = evaluateAll(modelData, lang, encoder, decoder, args, computeMafDist=True)
+    accuracies.append(acc)
+    accPD = pd.DataFrame(accuracies,columns=["Acc", "common positives", "common acertos", "common acc","uncommon positives", "uncommon acertos", "uncommon acc","rare positives", "rare acertos", "rare acc"])
+    accPD.to_csv("log/Acc_"+str(int(time.time()))+".csv")
   
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, args):
     encoder_hidden = encoder.initHidden()
@@ -74,7 +74,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     decoder_input = torch.tensor([[SOS_token]], device=device)
     decoder_hidden = encoder_hidden
     
-    use_teacher_forcing = True if random.random() < 0.2 else False
+    use_teacher_forcing = False
 
     if use_teacher_forcing:
         # Teacher forcing: Feed the target as the next input
